@@ -17,7 +17,6 @@ def VISGO(env, L, X, g, eps, n, delta):
     while (nV - V).max() > eps:
         V = nV
         if V.max() > 2 * L:
-            #print('V exploded:', V)
             return np.full(S, np.inf), np.zeros(S)
         b = np.maximum(c1 * np.sqrt(np.maximum(1e-8, variance(bP, V) * iota / Np)), c2 * L * iota / Np)
         nQ = np.maximum(0, 1 + np.dot(tP, V) - b)
@@ -66,34 +65,34 @@ def LASD(env, L, eps, delta):
             K = K.union(Kp)
             Kp, U = set(), set()
             _, U = EXPLORE(env, K, Pi, np.zeros((S, A, S)), 2 * L * np.log(4 * S * A * L * r ** 2 / delta))
-            nmin =  int(10 * L ** 2 * len(K) * np.log(S * r / delta))
+            nmin =  int(5 * L ** 2 * len(K) * np.log(S * r / delta))
             N, _ = EXPLORE(env, K, Pi, N, nmin)
-            print('update K:', r, v, K, U, nmin)
+            print('K:', K, 'U:', U)
         else: # policy evaluation
-            #print(r, gstar, pi)
-            tau, lambd = 0, int(20 * np.log(L * r / (eps * delta)) / eps ** 2)
-            skip = False
+            #tau, lambd = 0, int(np.log(L * r / (eps * delta)) / eps ** 2)
+            tau, lambd = 0, 5000
+            skip = False # skip or failure round
             for j in range(lambd):
                 s = env.step(0) # reset
                 while s != gstar:
                     a = pi[s]
                     ns = env.step(a)
                     N[s, a, ns] += 1
-                    if int(N.sum()) in calN or (s in K and int(N[s, a].sum()) in calN): # skip
+                    if int(N.sum()) in calN or (s in K and int(N[s, a].sum()) in calN): # skip round
                         skip = True
                         break
                     tau += 1
                     s = ns
-                if skip or tau / lambd > v + eps * L / 2: # failure
+                if skip or tau / lambd > v + eps * L / 2: # failure round
                     skip = True
                     break
-            if not skip: # success
+            if not skip: # success round
                 Kp.add(gstar)
                 U.remove(gstar)
                 Pi[gstar] = pi
 
 
-def compute_K(env, L):
+def compute_layers(env, L):
     S, B = env.S, 2 * L
     Ks = [[0]]
     while True:
@@ -104,18 +103,20 @@ def compute_K(env, L):
             V, pi, Q = q_value_iteration(c, P, B)
             if V[0] <= L:
                 nK.append(g)
-        print(K, nK)
+        print('all previous layers:', K, 'next layer:', nK)
         if not nK: break
         Ks.append(nK)
     return Ks
 
 
 if __name__ == "__main__":
-    L, eps, delta = 4, 1e-2, 1e-3
-    env = GWEnv(4, 4, 0.2)
+    L, eps, delta = 4, 0.01, 1e-3
+    env = GWEnv(4, 4, 0.1)
 
+    print('Run LASD')
     K, Pi = LASD(env, L, eps, delta)
-    print(K)
-    print(Pi)
+    print('discovered incrementally reachable states:', K)
+    print('discovered policies:', Pi)
 
-    #print(compute_K(env, L))
+    print('Compute the ground truth layers')
+    print('ground truth layers:', compute_layers(env, L))

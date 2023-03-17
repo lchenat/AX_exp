@@ -3,6 +3,9 @@ from itertools import product
 
 directions = [[1, 0], [-1, 0], [0, 1], [0, -1]]
 
+"""
+Gridworld environment with size h x w. Each action has a small probability of randomly going towards one direction.
+"""
 class GWEnv:
     def __init__(self, h, w, p):
         self.h, self.w = h, w
@@ -23,6 +26,7 @@ class GWEnv:
             self.s = nx, ny 
         return self.s[0] * self.w + self.s[1]
 
+    # compute the transition and cost functions given a subset X and goal state g
     def get_MDP(self, X, g):
         h, w = self.h, self.w
         c = np.ones((self.S, self.A))
@@ -38,7 +42,7 @@ class GWEnv:
         for s in range(self.S):
             if s not in X:
                 p[s, :, :] = 0
-                p[s, :, 0] = 1 # if not in X, all action is reset
+                p[s, :, 0] = 1 # if not in X, all actions lead to reset
         p[g, :, :] = 0
         p[g, :, g] = 1 # goal is absorbing
         return c, p
